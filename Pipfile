@@ -7,8 +7,9 @@ name = "pypi"
 ipykernel = "*"
 pandas = "*"
 matplotlib = "*"
-scikit-learn = "*"
 fastapi = "*"
+seaborn = "*"
+scikit-learn = "*"
 
 [dev-packages]
 ipykernel = "*"

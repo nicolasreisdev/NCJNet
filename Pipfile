@@ -10,6 +10,9 @@ matplotlib = "*"
 fastapi = "*"
 seaborn = "*"
 scikit-learn = "*"
+uvicorn = "*"
+pydantic = "*"
+joblib = "*"
 
 [dev-packages]
 ipykernel = "*"

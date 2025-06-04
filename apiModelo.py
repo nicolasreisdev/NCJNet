@@ -1,0 +1,95 @@
+from fastapi import FastAPI
+import uvicorn 
+from pydantic import BaseModel
+import pandas as pd
+import joblib
+from sklearn.preprocessing import LabelEncoder
+
+
+# Criar um instância no FasAPI
+app = FastAPI()
+
+# Criar uma classe com os dados de entrada que virão no body da requisição com os tipos esperados
+class request_body(BaseModel):
+    #tempo_na_empresa: int 
+    #nivel_na_empresa: int
+    notaMatematica: int
+    notaPortugues: int
+    notaLiteratura: int
+    notaRedacao: int
+    notaQuimica: int
+    notaFisica: int
+    notaBiologia: int
+    notaGeografia: int
+    notaHistoria: int
+    notaFilosofia: int
+    notaSociologia: int
+    notaArtes: int
+    areaPreferencia: str
+    
+# Carregar modelo para realizar a predição
+sugestorModel = joblib.load('./model/sugestor.pkl')
+label_curso = joblib.load('./model/labelCurso.pkl')
+areas_cursos = {
+    'Sociologia': 'Humanas',
+    'Psicologia': 'Saúde',
+    'Odontologia': 'Saúde',
+    'Medicina Veterinária': 'Biológicas',
+    'Medicina': 'Saúde',
+    'Historia': 'Humanas',
+    'Engenharia Eletrica': 'Exatas', 
+    'Engenharia da Computação': 'Exatas',
+    'Engenharia Civil': 'Exatas',
+    'Enfermagem': 'Saúde',
+    'Biologia': 'Biológicas'
+}
+
+
+@app.post('/predict')
+def predict(data: request_body):
+    input_features = {
+        'Matematica': data.notaMatematica,
+        'Portugues': data.notaPortugues,
+        'Literatura': data.notaLiteratura,
+        'Redacao': data.notaRedacao,
+        'Quimica': data.notaQuimica,
+        'Fisica': data.notaFisica,
+        'Biologia': data.notaBiologia,
+        'Geografia': data.notaGeografia,
+        'Historia': data.notaHistoria,
+        'Filosofia': data.notaFilosofia,
+        'Sociologia': data.notaSociologia,
+        'Artes': data.notaArtes
+    }
+    feature_cols = ['Matematica', 'Portugues', 'Literatura', 'Redacao', 'Quimica', 'Fisica', 'Biologia', 'Geografia', 'Historia', 'Filosofia', 'Sociologia', 'Artes']
+    pred_df = pd.DataFrame([input_features], columns=feature_cols)
+    
+    y = sugestorModel.predict_proba(pred_df)[0]
+    
+    recomendacoes_area = []
+    for i, nome_curso in enumerate(label_curso.classes_):
+        if areas_cursos.get(nome_curso) == data.areaPreferencia:
+            recomendacoes_area.append({
+                'curso': nome_curso,
+                'probabilidade_aptidao': y[i],
+                'area': data.areaPreferencia
+            })
+
+    # Ordenar os cursos da área pela probabilidade de aptidão (do maior para o menor)
+    recomendacoes_ordenadas = sorted(recomendacoes_area, key=lambda x: x['probabilidade_aptidao'], reverse=True)
+
+    return recomendacoes_ordenadas[:3]
+    
+# def predict(data: request_body):
+#     input_features = {
+#     'tempo_na_empresa': data.tempo_na_empresa,
+#     'nivel_na_empresa': data.nivel_na_empresa
+#     }
+
+#     pred_df = pd.DataFrame(input_features, index=[1])
+    
+#     # Predição
+#     y_pred = model_poly.predict(pred_df)[0].astype(float)
+    
+#     return {'salario_em_reais': y_pred.tolist()}
+    

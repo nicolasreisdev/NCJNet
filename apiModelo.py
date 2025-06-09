@@ -11,8 +11,6 @@ app = FastAPI()
 
 # Criar uma classe com os dados de entrada que virão no body da requisição com os tipos esperados
 class request_body(BaseModel):
-    #tempo_na_empresa: int 
-    #nivel_na_empresa: int
     notaMatematica: int
     notaPortugues: int
     notaLiteratura: int
@@ -32,13 +30,13 @@ sugestorModel = joblib.load('./model/sugestor.pkl')
 label_curso = joblib.load('./model/labelCurso.pkl')
 areas_cursos = {
     'Sociologia': 'Humanas',
-    'Psicologia': 'Saúde',
+    'Psicologia': 'Humanas',
     'Odontologia': 'Saúde',
     'Medicina Veterinária': 'Biológicas',
     'Medicina': 'Saúde',
     'Historia': 'Humanas',
     'Engenharia Eletrica': 'Exatas', 
-    'Engenharia da Computação': 'Exatas',
+    'Engenharia da Computação': 'Tecnologia',
     'Engenharia Civil': 'Exatas',
     'Enfermagem': 'Saúde',
     'Biologia': 'Biológicas'

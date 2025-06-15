@@ -11,8 +11,6 @@ app = FastAPI()
 
 # Criar uma classe com os dados de entrada que virão no body da requisição com os tipos esperados
 class request_body(BaseModel):
-    #tempo_na_empresa: int 
-    #nivel_na_empresa: int
     notaMatematica: int
     notaPortugues: int
     notaLiteratura: int
@@ -31,17 +29,68 @@ class request_body(BaseModel):
 sugestorModel = joblib.load('./model/sugestor.pkl')
 label_curso = joblib.load('./model/labelCurso.pkl')
 areas_cursos = {
-    'Sociologia': 'Humanas',
-    'Psicologia': 'Saúde',
+        'Sociologia': 'Humanas',
+    'Psicologia': 'Humanas',
     'Odontologia': 'Saúde',
     'Medicina Veterinária': 'Biológicas',
     'Medicina': 'Saúde',
     'Historia': 'Humanas',
     'Engenharia Eletrica': 'Exatas', 
-    'Engenharia da Computação': 'Exatas',
+    'Engenharia da Computação': 'Tecnologia',
     'Engenharia Civil': 'Exatas',
     'Enfermagem': 'Saúde',
-    'Biologia': 'Biológicas'
+    'Biologia': 'Biológicas',
+    'Ciencia da Computação': 'Tecnologia',
+    'Arquitetura e Urbanismo': 'Exatas',
+    'Direito': 'Humanas',
+    'Design': 'Exatas',
+    'Artes Visuais': 'Artes',
+    'Engenharia de Produção': 'Exatas',
+    'Engenharia Mecânica': 'Exatas',
+    'Engenharia Química': 'Exatas',
+    'Engenharia Ambiental': 'Exatas',
+    'Engenharia de Alimentos': 'Exatas',
+    'Engenharia de Software': 'Tecnologia',
+    'Geografia': 'Humanas',
+    'Filosofia': 'Humanas',
+    'Quimica': 'Exatas',
+    'Fisica': 'Exatas',
+    'Matematica': 'Exatas',
+    'Letras': 'Linguagens',
+    'Danca': 'Artes',
+    'Musica': 'Artes',
+    'Teatro': 'Artes',
+    'Artes Cênicas': 'Artes',
+    'Artes Plásticas': 'Artes',
+    'Cinema': 'Artes',
+    'Sistemas da Informação': 'Tecnologia',
+    'Agronomia': 'Biológicas',
+    'Historia': 'Humanas',
+    'Ciencias Sociais': 'Humanas',
+    'Servico Social': 'Humanas',
+    'Educacao Fisica': 'Saúde',
+    'Relacoes Internacionais': 'Humanas',
+    'Jornalismo': 'Comunicacao',
+    'Publicidade e Propaganda': 'Comunicacao',
+    'Relações Públicas': 'Comunicacao',
+    'Marketing': 'Comunicacao',
+    'Administração': 'Humanas',
+    'Farmacia': 'Biológicas',
+    'Biomedicina': 'Biológicas',
+    'Nutricao': 'Biológicas',
+    'Fisioterapia': 'Saúde',
+    'Fonoaudiologia': 'Saúde',
+    'Analise e Desenvolvimento de Sistemas': 'Tecnologia',
+    'Ciencia de Dados': 'Tecnologia',
+    'Linguistica': 'Linguagens',
+    'Pedagogia': 'Humanas',
+    'Engenharia Florestal': 'Biologicas',
+    'Moda': 'Artes',
+    'Design Grafico': 'Artes',
+    'Design de Interiores': 'Artes',
+    'Museologia': 'Humanas',
+    'Gestao Ambiental': 'Exatas',
+    'Biblioteconomia': 'Humanas'
 }
 
 

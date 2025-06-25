@@ -1,13 +1,21 @@
 from fastapi import FastAPI
+import unicodedata
+
 import uvicorn 
 from pydantic import BaseModel
 import pandas as pd
+import numpy as np
 import joblib
 from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import OneHotEncoder
+
 
 
 # Criar um instância no FasAPI
 app = FastAPI()
+
+def normalize(s):
+    return unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('ASCII').lower().strip()
 
 # Criar uma classe com os dados de entrada que virão no body da requisição com os tipos esperados
 class request_body(BaseModel):
@@ -35,13 +43,12 @@ areas_cursos = {
     'Odontologia': 'Saúde',
     'Medicina Veterinária': 'Biológicas',
     'Medicina': 'Saúde',
-    'Historia': 'Humanas',
-    'Engenharia Eletrica': 'Exatas', 
+    'Engenharia Elétrica': 'Exatas', 
     'Engenharia da Computação': 'Tecnologia',
     'Engenharia Civil': 'Exatas',
     'Enfermagem': 'Saúde',
     'Biologia': 'Biológicas',
-    'Ciencia da Computação': 'Tecnologia',
+    'Ciência da Computação': 'Tecnologia',
     'Arquitetura e Urbanismo': 'Exatas',
     'Direito': 'Humanas',
     'Design': 'Exatas',
@@ -54,45 +61,46 @@ areas_cursos = {
     'Engenharia de Software': 'Tecnologia',
     'Geografia': 'Humanas',
     'Filosofia': 'Humanas',
-    'Quimica': 'Exatas',
-    'Fisica': 'Exatas',
-    'Matematica': 'Exatas',
+    'Química': 'Exatas',
+    'Física': 'Exatas',
+    'Matemática': 'Exatas',
     'Letras': 'Linguagens',
-    'Danca': 'Artes',
-    'Musica': 'Artes',
+    'Dança': 'Artes',
+    'Música': 'Artes',
     'Teatro': 'Artes',
     'Artes Cênicas': 'Artes',
     'Artes Plásticas': 'Artes',
     'Cinema': 'Artes',
     'Sistemas da Informação': 'Tecnologia',
     'Agronomia': 'Biológicas',
-    'Historia': 'Humanas',
-    'Ciencias Sociais': 'Humanas',
-    'Servico Social': 'Humanas',
-    'Educacao Fisica': 'Saúde',
-    'Relacoes Internacionais': 'Humanas',
+    'História': 'Humanas',
+    'Ciências Sociais': 'Humanas',
+    'Serviço Social': 'Humanas',
+    'Educação Física': 'Saúde',
+    'Relações Internacionais': 'Humanas',
     'Jornalismo': 'Comunicacao',
     'Publicidade e Propaganda': 'Comunicacao',
     'Relações Públicas': 'Comunicacao',
     'Marketing': 'Comunicacao',
     'Administração': 'Humanas',
-    'Farmacia': 'Biológicas',
+    'Farmácia': 'Biológicas',
     'Biomedicina': 'Biológicas',
-    'Nutricao': 'Biológicas',
+    'Nutrição': 'Biológicas',
     'Fisioterapia': 'Saúde',
     'Fonoaudiologia': 'Saúde',
-    'Analise e Desenvolvimento de Sistemas': 'Tecnologia',
-    'Ciencia de Dados': 'Tecnologia',
-    'Linguistica': 'Linguagens',
+    'ADS': 'Tecnologia',
+    'Ciência de Dados': 'Tecnologia',
+    'Linguística': 'Linguagens',
     'Pedagogia': 'Humanas',
     'Engenharia Florestal': 'Biologicas',
     'Moda': 'Artes',
     'Design Grafico': 'Artes',
     'Design de Interiores': 'Artes',
     'Museologia': 'Humanas',
-    'Gestao Ambiental': 'Exatas',
+    'Gestão Ambiental': 'Exatas',
     'Biblioteconomia': 'Humanas'
 }
+
 
 
 @app.post('/predict')
@@ -109,20 +117,37 @@ def predict(data: request_body):
         'Historia': data.notaHistoria,
         'Filosofia': data.notaFilosofia,
         'Sociologia': data.notaSociologia,
-        'Artes': data.notaArtes
+        'Artes': data.notaArtes,
+        '"Area de Preferencia"': data.areaPreferencia
     }
-    feature_cols = ['Matematica', 'Portugues', 'Literatura', 'Redacao', 'Quimica', 'Fisica', 'Biologia', 'Geografia', 'Historia', 'Filosofia', 'Sociologia', 'Artes']
+    
+    encoder = joblib.load('./model/encoderAreaPref.pkl')
+    feature_cols = ['Matematica', 'Portugues', 'Literatura', 'Redacao', 'Quimica', 'Fisica', 'Biologia', 'Geografia', 'Historia', 'Filosofia', 'Sociologia', 'Artes','"Area de Preferencia"']
+
     pred_df = pd.DataFrame([input_features], columns=feature_cols)
+
+
+    area_pref_encoded = encoder.transform(pred_df[['"Area de Preferencia"']])
+    area_pref_encoded = area_pref_encoded.astype(float) * 5
     
-    y = sugestorModel.predict_proba(pred_df)[0]
+    X_numeric = pred_df.drop(columns=['"Area de Preferencia"'])
+    X_pred = np.concatenate([X_numeric.values, area_pref_encoded], axis=1)
     
+    y = sugestorModel.predict_proba(X_pred)[0]
+    
+    preferencia_normalizada = normalize(data.areaPreferencia)
+    print(list(label_curso.classes_))
+    
+    print("Preferência normalizada recebida:", preferencia_normalizada)
     recomendacoes_area = []
     for i, nome_curso in enumerate(label_curso.classes_):
-        if areas_cursos.get(nome_curso) == data.areaPreferencia:
+        area_curso = areas_cursos.get(nome_curso)
+        print(f"{nome_curso}: {area_curso} -> {normalize(area_curso) if area_curso else None}")
+        if area_curso and normalize(area_curso) == preferencia_normalizada:
             recomendacoes_area.append({
                 'curso': nome_curso,
                 'probabilidade_aptidao': y[i],
-                'area': data.areaPreferencia
+                'area': area_curso
             })
 
     # Ordenar os cursos da área pela probabilidade de aptidão (do maior para o menor)

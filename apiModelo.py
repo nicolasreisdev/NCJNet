@@ -26,10 +26,11 @@ class request_body(BaseModel):
     areaPreferencia: str
     
 # Carregar modelo para realizar a predição
-sugestorModel = joblib.load('./model/sugestor.pkl')
+# sugestorModel = joblib.load('./model/sugestor.pkl')
+sugestorModel = joblib.load('./model/sugestorXGB.pkl')
 label_curso = joblib.load('./model/labelCurso.pkl')
 areas_cursos = {
-        'Sociologia': 'Humanas',
+    'Sociologia': 'Humanas',
     'Psicologia': 'Humanas',
     'Odontologia': 'Saúde',
     'Medicina Veterinária': 'Biológicas',

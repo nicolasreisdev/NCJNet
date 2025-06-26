@@ -6,8 +6,6 @@ from pydantic import BaseModel
 import pandas as pd
 import numpy as np
 import joblib
-from sklearn.preprocessing import LabelEncoder
-from sklearn.preprocessing import OneHotEncoder
 
 
 
@@ -37,7 +35,8 @@ class request_body(BaseModel):
 # sugestorModel = joblib.load('./model/sugestor.pkl')
 sugestorModel = joblib.load('./model/sugestorXGB.pkl')
 label_curso = joblib.load('./model/labelCurso.pkl')
-areas_cursos = {
+areas_cursos = joblib.load('./model/areaCursos.pkl')
+""" areas_cursos = {
     'Sociologia': 'Humanas',
     'Psicologia': 'Humanas',
     'Odontologia': 'Saúde',
@@ -78,10 +77,10 @@ areas_cursos = {
     'Serviço Social': 'Humanas',
     'Educação Física': 'Saúde',
     'Relações Internacionais': 'Humanas',
-    'Jornalismo': 'Comunicacao',
-    'Publicidade e Propaganda': 'Comunicacao',
-    'Relações Públicas': 'Comunicacao',
-    'Marketing': 'Comunicacao',
+    'Jornalismo': 'Comunicação',
+    'Publicidade e Propaganda': 'Comunicação',
+    'Relações Públicas': 'Comunicação',
+    'Marketing': 'Comunicação',
     'Administração': 'Humanas',
     'Farmácia': 'Biológicas',
     'Biomedicina': 'Biológicas',
@@ -92,14 +91,14 @@ areas_cursos = {
     'Ciência de Dados': 'Tecnologia',
     'Linguística': 'Linguagens',
     'Pedagogia': 'Humanas',
-    'Engenharia Florestal': 'Biologicas',
+    'Engenharia Florestal': 'Biológicas',
     'Moda': 'Artes',
     'Design Grafico': 'Artes',
     'Design de Interiores': 'Artes',
     'Museologia': 'Humanas',
     'Gestão Ambiental': 'Exatas',
     'Biblioteconomia': 'Humanas'
-}
+} """
 
 
 
@@ -118,35 +117,38 @@ def predict(data: request_body):
         'Filosofia': data.notaFilosofia,
         'Sociologia': data.notaSociologia,
         'Artes': data.notaArtes,
-        '"Area de Preferencia"': data.areaPreferencia
+        'Area de Preferencia': data.areaPreferencia
     }
     
     encoder = joblib.load('./model/encoderAreaPref.pkl')
-    feature_cols = ['Matematica', 'Portugues', 'Literatura', 'Redacao', 'Quimica', 'Fisica', 'Biologia', 'Geografia', 'Historia', 'Filosofia', 'Sociologia', 'Artes','"Area de Preferencia"']
+    feature_cols = ['Matematica', 'Portugues', 'Literatura', 'Redacao', 'Quimica', 'Fisica', 'Biologia', 'Geografia', 'Historia', 'Filosofia', 'Sociologia', 'Artes','Area de Preferencia']
 
     pred_df = pd.DataFrame([input_features], columns=feature_cols)
 
 
-    area_pref_encoded = encoder.transform(pred_df[['"Area de Preferencia"']])
+    area_pref_encoded = encoder.transform(pred_df[['Area de Preferencia']])
     area_pref_encoded = area_pref_encoded.astype(float) * 5
     
-    X_numeric = pred_df.drop(columns=['"Area de Preferencia"'])
+    X_numeric = pred_df.drop(columns=['Area de Preferencia'])
     X_pred = np.concatenate([X_numeric.values, area_pref_encoded], axis=1)
     
     y = sugestorModel.predict_proba(X_pred)[0]
     
-    preferencia_normalizada = normalize(data.areaPreferencia)
-    print(list(label_curso.classes_))
     
-    print("Preferência normalizada recebida:", preferencia_normalizada)
+    recomendacoes_area = []
+    
+    # Normalizar áreas do dicionário para evitar erros de comparação
+    areas_cursos_normalizado = {normalize(k): v for k, v in areas_cursos.items()}
+    preferencia_normalizada = normalize(data.areaPreferencia)
+
     recomendacoes_area = []
     for i, nome_curso in enumerate(label_curso.classes_):
-        area_curso = areas_cursos.get(nome_curso)
-        print(f"{nome_curso}: {area_curso} -> {normalize(area_curso) if area_curso else None}")
+        nome_curso_limpo = nome_curso.strip()
+        area_curso = areas_cursos_normalizado.get(normalize(nome_curso_limpo))
         if area_curso and normalize(area_curso) == preferencia_normalizada:
             recomendacoes_area.append({
-                'curso': nome_curso,
-                'probabilidade_aptidao': y[i],
+                'curso': nome_curso_limpo,
+                'probabilidade_aptidao': float(y[i]),
                 'area': area_curso
             })
 

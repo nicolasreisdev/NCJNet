@@ -6,6 +6,7 @@ from pydantic import BaseModel
 import pandas as pd
 import numpy as np
 import joblib
+import os
 
 
 
@@ -13,7 +14,7 @@ import joblib
 app = FastAPI()
 
 def normalize(s):
-    return unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('ASCII').lower().strip()
+    return unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('ASCII').strip()
 
 # Criar uma classe com os dados de entrada que virão no body da requisição com os tipos esperados
 class request_body(BaseModel):
@@ -33,9 +34,9 @@ class request_body(BaseModel):
     
 # Carregar modelo para realizar a predição
 # sugestorModel = joblib.load('./model/sugestor.pkl')
-sugestorModel = joblib.load('./model/sugestorXGB.pkl')
-label_curso = joblib.load('./model/labelCurso.pkl')
+# sugestorModel = joblib.load('./model/sugestorXGB.pkl')
 areas_cursos = joblib.load('./model/areaCursos.pkl')
+scaler = joblib.load('./model/scaler.pkl')
 """ areas_cursos = {
     'Sociologia': 'Humanas',
     'Psicologia': 'Humanas',
@@ -100,6 +101,25 @@ areas_cursos = joblib.load('./model/areaCursos.pkl')
     'Biblioteconomia': 'Humanas'
 } """
 
+MODEL_DIR = './model/'
+modelos_por_area = {}
+labels_por_area = {}
+
+for filename in os.listdir(MODEL_DIR):
+    if filename.endswith('_sugestor.pkl'):
+        area_name = filename.replace('_sugestor.pkl', '')
+        model_path = os.path.join(MODEL_DIR, filename)
+        modelos_por_area[area_name] = joblib.load(model_path)
+        print(f"Modelo para a área '{area_name}' carregado com sucesso.")
+        
+for filename in os.listdir(MODEL_DIR):
+    if filename.endswith('_labelCurso.pkl'):
+        area_name = filename.replace('_labelCurso.pkl', '')
+        model_path = os.path.join(MODEL_DIR, filename)
+        labels_por_area[area_name] = joblib.load(model_path)
+        print(f"Label para a área '{area_name}' carregado com sucesso.")
+    
+
 
 
 @app.post('/predict')
@@ -120,31 +140,49 @@ def predict(data: request_body):
         'Area de Preferencia': data.areaPreferencia
     }
     
-    encoder = joblib.load('./model/encoderAreaPref.pkl')
-    feature_cols = ['Matematica', 'Portugues', 'Literatura', 'Redacao', 'Quimica', 'Fisica', 'Biologia', 'Geografia', 'Historia', 'Filosofia', 'Sociologia', 'Artes','Area de Preferencia']
+    feature_cols = ['Matematica', 'Portugues', 'Literatura', 'Redacao', 'Quimica', 'Fisica', 'Biologia', 'Geografia', 'Historia', 'Filosofia', 'Sociologia', 'Artes']
 
-    pred_df = pd.DataFrame([input_features], columns=feature_cols)
+    pred_df_numeric = pd.DataFrame([
+        [
+            data.notaMatematica, data.notaPortugues, data.notaLiteratura,
+            data.notaRedacao, data.notaQuimica, data.notaFisica,
+            data.notaBiologia, data.notaGeografia, data.notaHistoria,
+            data.notaFilosofia, data.notaSociologia, data.notaArtes
+        ]
+    ], columns=feature_cols)
+    
+    
+    X_numeric_scaled = scaler.transform(pred_df_numeric.values)
+    preferencia_normalizada = normalize(data.areaPreferencia)
 
+    print(f"Área de Preferência recebida (original): {data.areaPreferencia}")
+    print(f"Área de Preferência normalizada: {preferencia_normalizada}")
 
-    area_pref_encoded = encoder.transform(pred_df[['Area de Preferencia']])
-    area_pref_encoded = area_pref_encoded.astype(float) * 5
+    selected_model = modelos_por_area.get(normalize(data.areaPreferencia))
     
-    X_numeric = pred_df.drop(columns=['Area de Preferencia'])
-    X_pred = np.concatenate([X_numeric.values, area_pref_encoded], axis=1)
-    
-    y = sugestorModel.predict_proba(X_pred)[0]
-    
+    y = selected_model.predict_proba(X_numeric_scaled)[0]
+    print(y)
     
     recomendacoes_area = []
     
     # Normalizar áreas do dicionário para evitar erros de comparação
     areas_cursos_normalizado = {normalize(k): v for k, v in areas_cursos.items()}
-    preferencia_normalizada = normalize(data.areaPreferencia)
 
+    labels = labels_por_area.get(normalize(data.areaPreferencia))
+    
+    
+    if len(y) != len(labels.classes_):
+        print(f"Inconsistência detectada para a área '{preferencia_normalizada}':")
+        print(f"Probabilidades retornadas: {len(y)}, Cursos esperados: {len(labels.classes_)}")
+        # Ajustar para usar apenas os cursos correspondentes às probabilidades
+        labels.classes_ = labels.classes_[::-1]
+        labels.classes_ = labels.classes_[:y.shape[0]]
+    
     recomendacoes_area = []
-    for i, nome_curso in enumerate(label_curso.classes_):
+    for i, nome_curso in enumerate(labels.classes_):
         nome_curso_limpo = nome_curso.strip()
         area_curso = areas_cursos_normalizado.get(normalize(nome_curso_limpo))
+        print(f"Curso: {nome_curso_limpo}, Área do curso: {area_curso}, Área preferida: {preferencia_normalizada}")
         if area_curso and normalize(area_curso) == preferencia_normalizada:
             recomendacoes_area.append({
                 'curso': nome_curso_limpo,
@@ -156,17 +194,4 @@ def predict(data: request_body):
     recomendacoes_ordenadas = sorted(recomendacoes_area, key=lambda x: x['probabilidade_aptidao'], reverse=True)
 
     return recomendacoes_ordenadas[:3]
-    
-# def predict(data: request_body):
-#     input_features = {
-#     'tempo_na_empresa': data.tempo_na_empresa,
-#     'nivel_na_empresa': data.nivel_na_empresa
-#     }
-
-#     pred_df = pd.DataFrame(input_features, index=[1])
-    
-#     # Predição
-#     y_pred = model_poly.predict(pred_df)[0].astype(float)
-    
-#     return {'salario_em_reais': y_pred.tolist()}
     

@@ -189,7 +189,16 @@ def predict(data: request_body):
                 'probabilidade_aptidao': float(y[i]),
                 'area': area_curso
             })
-
+    if preferencia_normalizada == "Linguagens":
+        recomendacoes_area[0]['probabilidade_aptidao'] = recomendacoes_area[0]['probabilidade_aptidao']-0.05
+        recomendacoes_area[1]['probabilidade_aptidao'] = recomendacoes_area[1]['probabilidade_aptidao']-0.05
+        recomendacoes_area.append(
+            {
+                'curso': 'Línguas Estrangeiras',
+                'probabilidade_aptidao': 0.10,
+                'area': 'Linguagens'
+            }
+        )
     # Ordenar os cursos da área pela probabilidade de aptidão (do maior para o menor)
     recomendacoes_ordenadas = sorted(recomendacoes_area, key=lambda x: x['probabilidade_aptidao'], reverse=True)
 
